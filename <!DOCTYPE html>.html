@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>All in One Cinema Booking</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+body{
+    margin:0;
+    font-family:Segoe UI;
+    background:#0f172a;
+    color:white;
+}
+
+/* HEADER */
+.main-header{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    padding:15px 25px;
+    background:#111827;
+}
+.logo{
+    font-size:20px;
+    font-weight:bold;
+}
+#headerRight{
+    display:flex;
+    align-items:center;
+    gap:15px;
+}
+#authBtn{
+    background:#ef4444;
+    padding:8px 14px;
+    border:none;
+    border-radius:6px;
+    color:white;
+    cursor:pointer;
+}
+
+/* LOGIN */
+.auth-box{
+    max-width:350px;
+    margin:80px auto;
+    background:#1e293b;
+    padding:25px;
+    border-radius:12px;
+}
+input,select{
+    width:100%;
+    padding:8px;
+    margin:6px 0;
+    border:none;
+    border-radius:6px;
+}
+button{
+    width:100%;
+    padding:10px;
+    background:#a855f7;
+    border:none;
+    border-radius:6px;
+    color:white;
+    margin-top:8px;
+    cursor:pointer;
+}
+button:hover{ background:#9333ea; }
+.toggle{
+    text-align:center;
+    cursor:pointer;
+    margin-top:10px;
+    color:#a855f7;
+}
+
+/* BOOKING */
+.container{
+    max-width:1000px;
+    margin:auto;
+    padding:20px;
+}
+.row{
+    display:flex;
+    justify-content:center;
+}
+.seat{
+    width:35px;
+    height:35px;
+    margin:4px;
+    border-radius:6px;
+    font-size:11px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    cursor:pointer;
+}
+.vip{background:#f59e0b;}
+.premium{background:#6366f1;}
+.normal{background:#334155;}
+.selected{outline:3px solid #22c55e;}
+.occupied{background:#444 !important; cursor:not-allowed;}
+
+.screen{
+    text-align:center;
+    margin:20px 0 10px 0;
+    color:#a855f7;
+    font-weight:bold;
+    font-size:18px;
+}
+
+/* LEGEND ORDER: Normal → Premium → VIP */
+.legend{
+    display:flex;
+    justify-content:center;
+    gap:30px;
+    margin-bottom:20px;
+    font-size:14px;
+}
+.legend .box{
+    display:inline-block;
+    width:18px;
+    height:18px;
+    border-radius:4px;
+    margin-right:6px;
+}
+
+.summary{
+    background:#1e293b;
+    padding:15px;
+    border-radius:10px;
+    margin-top:20px;
+}
+</style>
+</head>
+<body>
+
+<header class="main-header">
+    <div class="logo">🎬 All in One Cinema Booking</div>
+    <div id="headerRight" style="display:none;">
+        <span id="headerUser"></span>
+        <button id="authBtn" onclick="logout()">Logout</button>
+    </div>
+</header>
+
+<!-- LOGIN -->
+<div id="authSection" class="auth-box">
+<h2 id="formTitle">Login</h2>
+<input type="text" id="authUser" placeholder="Username">
+<input type="password" id="authPass" placeholder="Password">
+<button onclick="handleAuth()">Login</button>
+<div class="toggle" onclick="toggleForm()">
+Don't have account? Signup
+</div>
+</div>
+
+<!-- BOOKING -->
+<div id="bookingSection" style="display:none;">
+<div class="container">
+
+<label>Select Movie:</label>
+<select id="movie">
+<option value="">Select Movie</option>
+<option>Toxic</option>
+<option>Awarapan 2</option>
+<option>Avtar 2</option>
+<option>O'Romeo</option>
+<option>Animal </option>
+<option>wanted </option>
+</select>
+
+<label>Date:</label>
+<input type="date" id="date">
+
+<label>Time:</label>
+<select id="time">
+<option>Select Time</option>
+<option>09:10 AM</option>
+<option>01:30 PM</option>
+<option>06:50 PM</option>
+<option>09:45 PM</option>
+</select>
+
+<div class="screen">SCREEN THIS WAY</div>
+
+<div class="legend">
+    <div><span class="box normal"></span> Normal – ₹200</div>
+    <div><span class="box premium"></span> Premium – ₹300</div>
+    <div><span class="box vip"></span> VIP – ₹500</div>
+</div>
+
+<div id="seatContainer"></div>
+
+<div class="summary">
+<p>Selected Seats: <span id="seatList"></span></p>
+<p>Total Price: ₹<span id="total">0</span></p>
+
+<select id="payment">
+<option value="">Select Payment Method</option>
+<option>UPI</option>
+<option>Credit Card</option>
+<option>Debit Card</option>
+<option>Cash</option>
+</select>
+
+<button onclick="confirmBooking()">Confirm & Pay</button>
+</div>
+
+<div id="result"></div>
+
+</div>
+</div>
+
+<script>
+let isLogin=true;
+const prices={vip:500,premium:300,normal:200};
+let selectedSeats=[];
+let occupiedSeats=[];
+
+function toggleForm(){
+    isLogin=!isLogin;
+    document.getElementById("formTitle").innerText=isLogin?"Login":"Signup";
+    document.querySelector("#authSection button").innerText=isLogin?"Login":"Signup";
+    document.querySelector(".toggle").innerText=
+    isLogin?"Don't have account? Signup":"Already have account? Login";
+}
+
+function handleAuth(){
+    let user=authUser.value;
+    let pass=authPass.value;
+    if(!user || !pass){alert("Fill all fields");return;}
+
+    if(!isLogin){
+        localStorage.setItem("cinemaUser",user);
+        localStorage.setItem("cinemaPass",pass);
+        alert("Signup Successful 🎉");
+        toggleForm();
+    }else{
+        let savedUser=localStorage.getItem("cinemaUser");
+        let savedPass=localStorage.getItem("cinemaPass");
+        if(user===savedUser && pass===savedPass){
+            localStorage.setItem("loggedIn","true");
+            localStorage.setItem("activeUser",user);
+            showBooking();
+        }else{
+            alert("Invalid Login");
+        }
+    }
+}
+
+function showBooking(){
+    document.getElementById("authSection").style.display="none";
+    document.getElementById("bookingSection").style.display="block";
+    document.getElementById("headerRight").style.display="flex";
+    document.getElementById("headerUser").innerText=
+        "👤 "+localStorage.getItem("activeUser");
+    generateSeats();
+}
+
+function logout(){
+    localStorage.removeItem("loggedIn");
+    location.reload();
+}
+
+function generateSeats(){
+    let container=document.getElementById("seatContainer");
+    container.innerHTML="";
+    let rows=["A","B","C","D","E","F"];
+    rows.forEach((rowName,index)=>{
+        let row=document.createElement("div");
+        row.className="row";
+        for(let i=1;i<=8;i++){
+            let seatNo=rowName+i;
+            let seat=document.createElement("div");
+            seat.classList.add("seat");
+            let category=index<2?"normal":index<4?"premium":"vip";
+            seat.classList.add(category);
+            seat.innerText=seatNo;
+
+            if(occupiedSeats.includes(seatNo)){
+                seat.classList.add("occupied");
+            }else{
+                seat.onclick=()=>selectSeat(seat,seatNo,category);
+            }
+            row.appendChild(seat);
+        }
+        container.appendChild(row);
+    });
+}
+
+function selectSeat(seat,seatNo,category){
+    if(seat.classList.contains("selected")){
+        seat.classList.remove("selected");
+        selectedSeats=selectedSeats.filter(s=>s.seat!==seatNo);
+    }else{
+        seat.classList.add("selected");
+        selectedSeats.push({seat:seatNo,price:prices[category]});
+    }
+    updateSummary();
+}
+
+function updateSummary(){
+    let totalAmount=0;
+    let names=[];
+    selectedSeats.forEach(s=>{
+        totalAmount+=s.price;
+        names.push(s.seat);
+    });
+    seatList.innerText=names.join(", ");
+    total.innerText=totalAmount;
+}
+
+function confirmBooking(){
+    let movie=movie.value;
+    let date=date.value;
+    let payment=payment.value;
+
+    if(!movie || !date || selectedSeats.length==0 || !payment){
+        alert("Complete all details");
+        return;
+    }
+
+    selectedSeats.forEach(s=>occupiedSeats.push(s.seat));
+
+    result.innerHTML=
+    `✅ Booking Confirmed<br>
+     Movie: ${movie}<br>
+     Date: ${date}<br>
+     Time: ${time.value}<br>
+     Seats: ${selectedSeats.map(s=>s.seat).join(", ")}<br>
+     Total Paid: ₹${total.innerText}`;
+
+    selectedSeats=[];
+    generateSeats();
+    updateSummary();
+}
+
+window.onload=function(){
+    if(localStorage.getItem("loggedIn")==="true"){
+        showBooking();
+    }
+}
+</script>
+
+</body>
+</html>
